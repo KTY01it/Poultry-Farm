@@ -1,0 +1,269 @@
+// Import Libraries
+#include "DHT.h"
+#include <ESP32_Servo.h>
+
+//Import Libraries of GasSensor
+ #include <MQ2.h>
+ #define MQ2 16
+ int sensorValue;
+// boolean state = false;
+
+//Libraries for OLED Display
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+//OLED pins
+#define OLED_SDA 21
+#define OLED_SCL 22 
+#define OLED_RST -1
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+//DHT11
+#define DHTPIN 33
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+int temp_led = 14;
+int fan_led = 8;
+int temp_lamp = 16;
+
+//Sieuam 
+//#define echopin 5
+//#define trigpin 6
+const int trigPin = 34;
+const int echoPin = 35;
+int duration;
+int distance;
+
+Servo myservo;
+int servoPin = 18;
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+
+//Initialize OLED display
+void startOLED(){
+  //reset OLED display via software
+  pinMode(OLED_RST, OUTPUT);
+  digitalWrite(OLED_RST, LOW);
+  delay(20);
+  digitalWrite(OLED_RST, HIGH);
+ 
+  //initialize OLED
+  Wire.begin(OLED_SDA, OLED_SCL);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Poultry Farm");
+}
+void setup() {
+  Serial.begin(112500);
+
+  Serial.println("DHT11 sensor!");
+  dht.begin();
+
+  pinMode(temp_led,OUTPUT);
+  pinMode(fan_led,OUTPUT);
+  pinMode(temp_lamp,OUTPUT);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  myservo.attach(servoPin);
+  
+  pinMode(MQ2, INPUT);
+  
+  myservo.write(0);                         
+  delay(100);
+
+}
+
+void loop() {
+  
+  //gas sensor start
+  sensorValue = digitalRead(MQ2);
+  Serial.print("Value Gas: ");
+  Serial.println(sensorValue);
+  delay(500);
+ if (sensorValue >1100)
+ {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+   
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Switch on Exhaust fans");
+  display.display();
+
+  Serial.println("Switch on Exhaust fans");
+ } 
+else
+ {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Switch off Exhaust fans");
+  display.display();
+  
+  Serial.println("Switch off Exhaust fans");
+ }
+  delay(100);
+  //gas sensor end
+  
+  //dht11 start
+  float t = dht.readTemperature();
+  Serial.print("Temperature: ");
+  Serial.print(t);
+  Serial.println("°C");
+  delay(500);
+
+if(t>35)
+ {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+   
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Temperature is HIGH");
+  display.display();
+  Serial.println("Temperature is HIGH");
+  digitalWrite(temp_led,HIGH); //Red
+  delay(200);  
+  }
+else if(t<25)
+  {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+  
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Temperature is LOW");
+  display.display();
+  Serial.println("Temperature is LOW");
+
+  }
+else
+  {
+  digitalWrite(temp_led,LOW);
+
+  }
+
+
+//Humidity
+
+  float d = dht.readHumidity();
+  Serial.print("Humidity: ");
+  Serial.print(d);
+  Serial.println("%");
+  delay(500);
+ 
+ if(d>80)
+ {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+   
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Humidity is HIGH");
+  display.display();
+  Serial.println("Humidity is HIGH");
+  digitalWrite(temp_lamp,HIGH); //Red
+  delay(200);
+
+  }
+else if (d<40)
+  {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+  
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Humidity is LOW");
+  display.display();
+  Serial.println("Humidity is LOW");
+  
+  }
+else
+ {
+  digitalWrite(temp_lamp,LOW); //Red
+  delay(200);
+  
+ }
+  //dht11 end
+  
+  //ultrasoinc start
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2;
+  Serial.print("distance:  ");
+  Serial.print(distance);
+  Serial.println(" cm");
+  delay(500);
+
+if(distance<5)
+ {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+  
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Fill up the water tanks");
+  display.display();
+  Serial.println("Fill up the water tanks");
+  delay(500);
+  myservo.write(90);
+  delay(2000);
+  }
+else if(distance>10)
+  {
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.clearDisplay();
+  
+  // display a line of text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10,10);
+  display.print("Water tank is full");
+  display.display();
+  Serial.println("Water tank is full");
+  delay(500);  
+  myservo.write(0);                           
+  delay(100);
+  }
+else
+  {
+  }
+  //ultrasoinc end
+  
+  //servo start
+//  myservo.write(90);
+//  delay(2000);
+//  myservo.write(0);                           
+  //servo end
+//  delay(100);
+
+}
